@@ -1,0 +1,15 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0a0a0f; color: #e8e8f0; font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+a { color: inherit; }
+button { font-family: inherit; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.fadeUp { animation: fadeUp 0.35s ease; }
+.job-card { transition: all 0.15s; }
+.job-card:hover { border-color: #7c6af730 !important; background: #14141e !important; }
+.nav-item { cursor: pointer; padding: 8px 16px; border-radius: 10px; color: #6b6b80; font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.nav-item:hover, .nav-item.active { background: #ffffff0a; color: #e8e8f0; }
+button:hover { opacity: 0.85; transform: translateY(-1px); }
+@keyframes toast { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.toast { animation: toast 0.25s ease; }
