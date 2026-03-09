@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 const initialProfile = {
-  name: "Alex Johnson",
+  name: "Rahul",
   title: "Senior Frontend Engineer",
   skills: "React, TypeScript, Node.js, GraphQL, AWS",
   experience: "5 years",
@@ -121,9 +121,17 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
       const q = searchQuery.trim() || profile.title;
       const res = await fetch(`/api/jobs?query=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setJobs(data.jobs || []);
+
+      // Local filter: only keep jobs whose title/company/tags match the query
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const filtered = (data.jobs || []).filter(job => {
+        const haystack = `${job.title} ${job.company} ${job.tags.join(" ")} ${job.description || ""}`.toLowerCase();
+        return terms.every(term => haystack.includes(term));
+      });
+
+      setJobs(filtered);
       setSourceCounts(data.counts || {});
-      showToast(`Found ${data.jobs?.length || 0} jobs from ${Object.keys(data.counts || {}).filter(k => data.counts[k] > 0).join(", ")}`);
+      showToast(`Found ${filtered.length} jobs matching "${q}"`);
       // Score jobs in background, 3 at a time
       const jobList = data.jobs || [];
       for (let i = 0; i < jobList.length; i += 3) {
