@@ -11,12 +11,12 @@
     "apply:visible": "node scripts/apply.js --visible"
   },
   "dependencies": {
-    "next": "14.2.3",
+    "next": "^14.2.35",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
-    "playwright": "^1.44.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "playwright": "^1.44.0"
   }
 }
