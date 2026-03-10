@@ -118,8 +118,8 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
     setJobs([]);
     setScores({});
     try {
-      const q = searchQuery.trim() || profile.title;
-      const res = await fetch(`/api/jobs?query=${encodeURIComponent(q)}`);
+      const q = searchQuery.trim();
+      const res = await fetch(q ? `/api/jobs?query=${encodeURIComponent(q)}` : `/api/jobs`);
       const data = await res.json();
 
       // Supabase already filters server-side, just use results directly
