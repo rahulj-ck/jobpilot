@@ -60,21 +60,19 @@ export default function Onboarding() {
         body: JSON.stringify({ pdfBase64: base64, fileName: file.name }),
       });
       const data = await resp.json();
-      if (data.parsed) {
-        setProfile(p => ({
-          ...p,
-          ...data.parsed,
-          resume_url: data.resumeUrl || "",
-          resume_filename: file.name,
-          work_history: data.parsed.work_history || [],
-          education_history: data.parsed.education_history || [],
-          certifications: Array.isArray(data.parsed.certifications) ? data.parsed.certifications.join(", ") : (data.parsed.certifications || ""),
-        }));
-        setStep(2);
-      } else if (data.resumeUploaded) {
-        setProfile(p => ({ ...p, resume_url: data.resumeUrl || "", resume_filename: file.name }));
-        setStep(2);
-      }
+      // Always advance to step 2 — even if AI parse failed, resume is uploaded
+      setProfile(p => ({
+        ...p,
+        ...(data.parsed || {}),
+        resume_url: data.resumeUrl || "",
+        resume_filename: file.name,
+        work_history: data.parsed?.work_history || [],
+        education_history: data.parsed?.education_history || [],
+        certifications: Array.isArray(data.parsed?.certifications)
+          ? data.parsed.certifications.join(", ")
+          : (data.parsed?.certifications || ""),
+      }));
+      setStep(2);
     } catch (e) {
       console.error(e);
     }
