@@ -33,3 +33,28 @@ drop policy if exists "Service upsert" on jobs;
 create policy "Public read"    on jobs for select using (true);
 create policy "Service insert" on jobs for insert with check (true);
 create policy "Service upsert" on jobs for update using (true);
+
+-- User profiles (resume data) — one per auth user
+create table if not exists profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  name          text not null default '',
+  title         text not null default '',
+  skills        text not null default '',
+  experience    text not null default '',
+  location      text not null default '',
+  salary_min    int not null default 0,
+  salary_max    int not null default 0,
+  bio           text not null default '',
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+alter table profiles enable row level security;
+
+drop policy if exists "Users read own profile" on profiles;
+drop policy if exists "Users insert own profile" on profiles;
+drop policy if exists "Users update own profile" on profiles;
+
+create policy "Users read own profile"   on profiles for select using (auth.uid() = id);
+create policy "Users insert own profile" on profiles for insert with check (auth.uid() = id);
+create policy "Users update own profile" on profiles for update using (auth.uid() = id);
