@@ -156,9 +156,18 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
   };
 
   useEffect(() => {
-    getValidSession().then(s => {
+    getValidSession().then(async s => {
       if (!s?.access_token) { router.replace("/login"); return; }
       setSession(s);
+      // Check if user has completed onboarding (has a profile)
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${s.user?.id}&select=name&limit=1`,
+          { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${s.access_token}` } }
+        );
+        const rows = await res.json();
+        if (!rows?.[0]?.name) { router.replace("/onboarding"); return; }
+      } catch {}
       handleSearch();
       fetchQueue(s);
     });
@@ -362,7 +371,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
               </div>
               {searchLoading ? (
                 <div style={{ display: "flex", gap: 12, alignItems: "center", color: muted, padding: "24px 0" }}>
-                  <Spinner /> Loading jobs from Remotive, The Muse & Adzuna…
+                  <Spinner /> Loading jobs from Greenhouse, Lever & Ashby…
                 </div>
               ) : sortedJobs.slice(0, 4).map(job => (
                 <MiniJobRow key={job.id} job={job} score={scores[job.id]} scoring={scoringIds.has(job.id)}
@@ -381,7 +390,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
           <div className="fadeUp">
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Job Search</h1>
-              <p style={{ color: muted }}>Real listings from Remotive, The Muse & Adzuna — AI-scored for your profile</p>
+              <p style={{ color: muted }}>Real listings from Greenhouse, Lever & Ashby — AI-scored for your profile</p>
             </div>
             <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -408,7 +417,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                 {searchLoading && (
                   <div style={{ ...card, display: "flex", gap: 12, alignItems: "center", color: muted }}>
-                    <Spinner /> Fetching from Remotive, The Muse & Adzuna…
+                    <Spinner /> Fetching from Greenhouse, Lever & Ashby…
                   </div>
                 )}
                 {!searchLoading && sortedJobs.length === 0 && (
