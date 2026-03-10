@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/router";
-import { loadSession, clearSession, signOut } from "../lib/auth";
 
 const initialProfile = {
   name: "Rahul",
@@ -11,13 +9,6 @@ const initialProfile = {
   salaryMin: 140000,
   salaryMax: 200000,
   bio: "Passionate frontend engineer with expertise in building scalable web applications.",
-  // Auto-apply fields
-  email: "",
-  phone: "",
-  linkedin: "",
-  workAuth: "yes",       // yes | no | visa
-  needSponsorship: "no", // yes | no
-  applyThreshold: 75,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -90,12 +81,6 @@ export default function Home() {
   const [filterScore, setFilterScore] = useState(0);
   const [toast, setToast] = useState(null);
   const [sourceCounts, setSourceCounts] = useState({});
-  const [session, setSession] = useState(null);
-  const [resumeUploading, setResumeUploading] = useState(false);
-  const [resumeFile, setResumeFile] = useState(null);
-  const [queue, setQueue] = useState([]);
-  const [queueing, setQueueing] = useState(new Set());
-  const router = useRouter();
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -154,71 +139,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
     setSearchLoading(false);
   };
 
-  useEffect(() => {
-    const s = loadSession();
-    if (!s?.access_token) { router.replace("/login"); return; }
-    setSession(s);
-    handleSearch();
-    fetchQueue(s);
-  }, []);
-
-  async function fetchQueue(s) {
-    const sess = s || session;
-    if (!sess?.access_token) return;
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/apply_queue?select=*&order=created_at.desc&limit=50`,
-        { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, Authorization: `Bearer ${sess.access_token}` } }
-      );
-      const data = await res.json();
-      setQueue(Array.isArray(data) ? data : []);
-    } catch (e) { console.error("Queue fetch error", e); }
-  }
-
-  async function queueJob(job, score) {
-    if (!session?.access_token) return;
-    setQueueing(q => new Set([...q, job.id]));
-    try {
-      // Generate cover letter first
-      let coverLetter = "";
-      try {
-        const aiRes = await fetch("/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "cover", job, profile }),
-        });
-        const aiData = await aiRes.json();
-        coverLetter = aiData.content || "";
-      } catch (e) {}
-
-      await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/apply_queue`,
-        {
-          method: "POST",
-          headers: {
-            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal",
-          },
-          body: JSON.stringify({
-            job_id: job.id,
-            job_title: job.title,
-            company: job.company,
-            job_url: job.url,
-            score,
-            cover_letter: coverLetter,
-            status: "queued",
-          }),
-        }
-      );
-      showToast(`✓ ${job.company} queued for auto-apply`);
-      fetchQueue();
-    } catch (e) {
-      showToast("Queue failed: " + e.message, "error");
-    }
-    setQueueing(q => { const n = new Set(q); n.delete(job.id); return n; });
-  }
+  useEffect(() => { handleSearch(); }, []);
 
   const generateCoverLetter = async (job) => {
     setAiPanel({ type: "cover", jobId: job.id, content: "", loading: true, job });
@@ -298,17 +219,8 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
         </nav>
         <div style={{ marginTop: "auto", padding: "16px 8px 0", borderTop: `1px solid ${border}` }}>
           <div style={{ fontSize: 11, color: muted, marginBottom: 4 }}>Signed in as</div>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>{profile.name || session?.user?.email?.split("@")[0] || "User"}</div>
-          <div style={{ fontSize: 12, color: muted, marginBottom: 12 }}>{profile.title}</div>
-          <button
-            onClick={async () => {
-              if (session?.access_token) await signOut(session.access_token);
-              clearSession();
-              router.replace("/login");
-            }}
-            style={{ width: "100%", padding: "8px", background: "#ffffff08", border: `1px solid ${border}`, borderRadius: 8, color: muted, fontSize: 12, fontFamily: "inherit", cursor: "pointer", fontWeight: 600 }}>
-            Sign Out
-          </button>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{profile.name}</div>
+          <div style={{ fontSize: 12, color: muted }}>{profile.title}</div>
         </div>
       </div>
 
@@ -416,11 +328,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                     status={statuses[job.id]} active={aiPanel?.jobId === job.id}
                     onCover={() => generateCoverLetter(job)}
                     onResume={() => tailorResume(job)}
-                    onApply={() => markApplied(job.id)}
-                    onQueue={() => queueJob(job, scores[job.id] || 0)}
-                    queuing={queueing.has(job.id)}
-                    queued={queue.some(q => q.job_id === job.id)}
-                    threshold={profile.applyThreshold || 75} />
+                    onApply={() => markApplied(job.id)} />
                 ))}
               </div>
 
@@ -503,56 +411,6 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                 </table>
               </div>
             )}
-
-            {/* Auto-Apply Queue */}
-            <div style={{ marginTop: 32 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>⚡ Auto-Apply Queue</h2>
-                  <p style={{ color: muted, fontSize: 13 }}>{queue.length} job{queue.length !== 1 ? "s" : ""} in queue</p>
-                </div>
-                <button style={btn("ghost")} onClick={() => fetchQueue()}>↻ Refresh</button>
-              </div>
-              {queue.length === 0 ? (
-                <div style={{ ...card, textAlign: "center", padding: 40, color: muted }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
-                  <div style={{ fontWeight: 600, color: text, marginBottom: 6 }}>Queue is empty</div>
-                  <p style={{ fontSize: 13 }}>Find jobs scoring {profile.applyThreshold || 75}+ and click <strong>Auto-Apply</strong></p>
-                </div>
-              ) : (
-                <div style={card}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ borderBottom: `1px solid ${border}` }}>
-                        {["Company", "Role", "Score", "Status", "Queued"].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: muted, fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {queue.map(item => {
-                        const statusColors = { queued: "#f59e0b", applying: "#3b82f6", applied: "#22c55e", failed: "#ef4444" };
-                        const color = statusColors[item.status] || muted;
-                        return (
-                          <tr key={item.id} style={{ borderBottom: `1px solid ${border}` }}>
-                            <td style={{ padding: "12px 12px", fontWeight: 600 }}>{item.company}</td>
-                            <td style={{ padding: "12px 12px", color: muted, fontSize: 13 }}>{item.job_title}</td>
-                            <td style={{ padding: "12px 12px" }}><ScoreRing score={item.score || 0} size={34} /></td>
-                            <td style={{ padding: "12px 12px" }}>
-                              <Pill color={color}>{item.status}</Pill>
-                              {item.error_msg && <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{item.error_msg}</div>}
-                            </td>
-                            <td style={{ padding: "12px 12px", color: muted, fontSize: 12 }}>
-                              {new Date(item.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -563,65 +421,6 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
               <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>My Profile</h1>
               <p style={{ color: muted }}>Used to AI-score jobs and generate tailored applications</p>
             </div>
-
-            {/* Resume Upload */}
-            <div style={{ ...card, maxWidth: 600, marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>📄 Resume</div>
-                  <div style={{ fontSize: 12, color: muted }}>Upload a PDF — we'll auto-fill your profile and use it for AI features</div>
-                </div>
-                {profile.resume_filename && (
-                  <div style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>✓ {profile.resume_filename}</div>
-                )}
-              </div>
-              <label style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                border: `2px dashed ${border}`, borderRadius: 12, padding: "24px",
-                cursor: resumeUploading ? "not-allowed" : "pointer",
-                background: "#ffffff04", transition: "all 0.15s",
-              }}>
-                <input type="file" accept=".pdf" style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setResumeFile(file.name);
-                    setResumeUploading(true);
-                    showToast("Parsing resume with AI…");
-                    try {
-                      const base64 = await new Promise((res) => {
-                        const reader = new FileReader();
-                        reader.onload = () => res(reader.result.split(",")[1]);
-                        reader.readAsDataURL(file);
-                      });
-                      const resp = await fetch("/api/resume", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "Authorization": `Bearer ${session?.access_token}`,
-                        },
-                        body: JSON.stringify({ pdfBase64: base64, fileName: file.name }),
-                      });
-                      const data = await resp.json();
-                      if (data.parsed) {
-                        setProfile(p => ({ ...p, ...data.parsed, resume_url: data.resumeUrl, resume_filename: file.name }));
-                        showToast("✓ Resume parsed! Profile auto-filled.");
-                      } else {
-                        showToast("Parse failed: " + (data.parseError || "unknown error"), "error");
-                      }
-                    } catch (err) {
-                      showToast("Upload failed: " + err.message, "error");
-                    }
-                    setResumeUploading(false);
-                  }}
-                />
-                {resumeUploading
-                  ? <><Spinner size={20} /><span style={{ color: muted, fontSize: 13 }}>Parsing with AI…</span></>
-                  : <><span style={{ fontSize: 24 }}>📎</span><span style={{ color: muted, fontSize: 13 }}>{resumeFile || "Click to upload PDF resume"}</span></>
-                }
-              </label>
-            </div>
-
             <div style={{ ...card, maxWidth: 600 }}>
               {[
                 { key: "name", label: "Full Name" },
@@ -654,60 +453,6 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                   </div>
                 ))}
               </div>
-
-              {/* Auto-Apply Fields */}
-              <div style={{ borderTop: `1px solid ${border}`, paddingTop: 24, marginBottom: 24 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚡ Auto-Apply Settings</div>
-                <div style={{ fontSize: 12, color: muted, marginBottom: 20 }}>Used by the apply script to fill Greenhouse forms</div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                  {[["email", "Email Address"], ["phone", "Phone Number"]].map(([key, label]) => (
-                    <div key={key}>
-                      <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</label>
-                      <input value={profile[key] || ""} onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))}
-                        style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }} />
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>LinkedIn URL</label>
-                  <input value={profile.linkedin || ""} placeholder="https://linkedin.com/in/yourname"
-                    onChange={e => setProfile(p => ({ ...p, linkedin: e.target.value }))}
-                    style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }} />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Work Auth (US)</label>
-                    <select value={profile.workAuth || "yes"} onChange={e => setProfile(p => ({ ...p, workAuth: e.target.value }))}
-                      style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }}>
-                      <option value="yes">Yes — authorized</option>
-                      <option value="no">No</option>
-                      <option value="visa">Yes — on visa</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Need Sponsorship</label>
-                    <select value={profile.needSponsorship || "no"} onChange={e => setProfile(p => ({ ...p, needSponsorship: e.target.value }))}
-                      style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }}>
-                      <option value="no">No</option>
-                      <option value="yes">Yes</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Min Score to Apply</label>
-                    <select value={profile.applyThreshold || 75} onChange={e => setProfile(p => ({ ...p, applyThreshold: +e.target.value }))}
-                      style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }}>
-                      <option value={70}>70+</option>
-                      <option value={75}>75+</option>
-                      <option value={80}>80+</option>
-                      <option value={85}>85+</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
               <button style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 14 }}
                 onClick={() => { showToast("Profile saved! Re-scoring jobs…"); setView("jobs"); handleSearch(); }}>
                 Save & Re-Score Jobs
@@ -722,7 +467,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function JobCard({ job, score, scoring, status, active, onCover, onResume, onApply, onQueue, queuing, queued, threshold }) {
+function JobCard({ job, score, scoring, status, active, onCover, onResume, onApply }) {
   return (
     <div className="job-card" style={{ ...card, border: active ? `1px solid ${accent}66` : `1px solid ${border}` }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
@@ -753,20 +498,12 @@ function JobCard({ job, score, scoring, status, active, onCover, onResume, onApp
           <span style={{ fontSize: 10, color: muted }}>Match</span>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}`, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${border}`, flexWrap: "wrap" }}>
         <button style={btn()} onClick={onCover}>✍ Cover Letter</button>
         <button style={btn()} onClick={onResume}>📄 Resume Tips</button>
         {job.url && (
           <a href={job.url} target="_blank" rel="noreferrer" style={{ ...btn("blue"), textDecoration: "none" }}>Apply →</a>
         )}
-        {score >= (threshold || 75) && !queued && status !== "applied" && (
-          <button
-            style={{ ...btn(), background: "#7c6af722", color: "#7c6af7", border: "1px solid #7c6af733", opacity: queuing ? 0.6 : 1 }}
-            onClick={onQueue} disabled={queuing}>
-            {queuing ? "Queuing…" : "⚡ Auto-Apply"}
-          </button>
-        )}
-        {queued && <span style={{ fontSize: 12, color: "#7c6af7", fontWeight: 600 }}>⚡ Queued</span>}
         {status !== "applied" && (
           <button style={{ ...btn("green"), marginLeft: "auto" }} onClick={onApply}>✓ Mark Applied</button>
         )}
