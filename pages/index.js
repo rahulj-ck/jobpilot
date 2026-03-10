@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { loadSession, clearSession, signOut } from "../lib/auth";
+import { getValidSession, clearSession, signOut } from "../lib/auth";
 
 const initialProfile = {
   name: "Rahul",
@@ -155,11 +155,12 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
   };
 
   useEffect(() => {
-    const s = loadSession();
-    if (!s?.access_token) { router.replace("/login"); return; }
-    setSession(s);
-    handleSearch();
-    fetchQueue(s);
+    getValidSession().then(s => {
+      if (!s?.access_token) { router.replace("/login"); return; }
+      setSession(s);
+      handleSearch();
+      fetchQueue(s);
+    });
   }, []);
 
   async function fetchQueue(s) {
