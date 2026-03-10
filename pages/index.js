@@ -122,12 +122,8 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
       const res = await fetch(`/api/jobs?query=${encodeURIComponent(q)}`);
       const data = await res.json();
 
-      // Local filter: only keep jobs whose title/company/tags match the query
-      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
-      const filtered = (data.jobs || []).filter(job => {
-        const haystack = `${job.title} ${job.company} ${job.tags.join(" ")} ${job.description || ""}`.toLowerCase();
-        return terms.every(term => haystack.includes(term));
-      });
+      // Supabase already filters server-side, just use results directly
+      const filtered = data.jobs || [];
 
       setJobs(filtered);
       setSourceCounts(data.counts || {});
