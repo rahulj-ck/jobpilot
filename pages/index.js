@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/router";
-import { loadSession, clearSession, signOut } from "../lib/auth";
 
 const initialProfile = {
   name: "Rahul",
@@ -83,10 +81,6 @@ export default function Home() {
   const [filterScore, setFilterScore] = useState(0);
   const [toast, setToast] = useState(null);
   const [sourceCounts, setSourceCounts] = useState({});
-  const [session, setSession] = useState(null);
-  const [resumeUploading, setResumeUploading] = useState(false);
-  const [resumeFile, setResumeFile] = useState(null);
-  const router = useRouter();
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -145,12 +139,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
     setSearchLoading(false);
   };
 
-  useEffect(() => {
-    const s = loadSession();
-    if (!s?.access_token) { router.replace("/login"); return; }
-    setSession(s);
-    handleSearch();
-  }, []);
+  useEffect(() => { handleSearch(); }, []);
 
   const generateCoverLetter = async (job) => {
     setAiPanel({ type: "cover", jobId: job.id, content: "", loading: true, job });
@@ -230,17 +219,8 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
         </nav>
         <div style={{ marginTop: "auto", padding: "16px 8px 0", borderTop: `1px solid ${border}` }}>
           <div style={{ fontSize: 11, color: muted, marginBottom: 4 }}>Signed in as</div>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>{profile.name || session?.user?.email?.split("@")[0] || "User"}</div>
-          <div style={{ fontSize: 12, color: muted, marginBottom: 12 }}>{profile.title}</div>
-          <button
-            onClick={async () => {
-              if (session?.access_token) await signOut(session.access_token);
-              clearSession();
-              router.replace("/login");
-            }}
-            style={{ width: "100%", padding: "8px", background: "#ffffff08", border: `1px solid ${border}`, borderRadius: 8, color: muted, fontSize: 12, fontFamily: "inherit", cursor: "pointer", fontWeight: 600 }}>
-            Sign Out
-          </button>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>{profile.name}</div>
+          <div style={{ fontSize: 12, color: muted }}>{profile.title}</div>
         </div>
       </div>
 
@@ -441,65 +421,6 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
               <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>My Profile</h1>
               <p style={{ color: muted }}>Used to AI-score jobs and generate tailored applications</p>
             </div>
-
-            {/* Resume Upload */}
-            <div style={{ ...card, maxWidth: 600, marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>📄 Resume</div>
-                  <div style={{ fontSize: 12, color: muted }}>Upload a PDF — we'll auto-fill your profile and use it for AI features</div>
-                </div>
-                {profile.resume_filename && (
-                  <div style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>✓ {profile.resume_filename}</div>
-                )}
-              </div>
-              <label style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                border: `2px dashed ${border}`, borderRadius: 12, padding: "24px",
-                cursor: resumeUploading ? "not-allowed" : "pointer",
-                background: "#ffffff04", transition: "all 0.15s",
-              }}>
-                <input type="file" accept=".pdf" style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setResumeFile(file.name);
-                    setResumeUploading(true);
-                    showToast("Parsing resume with AI…");
-                    try {
-                      const base64 = await new Promise((res) => {
-                        const reader = new FileReader();
-                        reader.onload = () => res(reader.result.split(",")[1]);
-                        reader.readAsDataURL(file);
-                      });
-                      const resp = await fetch("/api/resume", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          "Authorization": `Bearer ${session?.access_token}`,
-                        },
-                        body: JSON.stringify({ pdfBase64: base64, fileName: file.name }),
-                      });
-                      const data = await resp.json();
-                      if (data.parsed) {
-                        setProfile(p => ({ ...p, ...data.parsed, resume_url: data.resumeUrl, resume_filename: file.name }));
-                        showToast("✓ Resume parsed! Profile auto-filled.");
-                      } else {
-                        showToast("Uploaded but couldn't auto-parse. Fill profile manually.", "error");
-                      }
-                    } catch (err) {
-                      showToast("Upload failed: " + err.message, "error");
-                    }
-                    setResumeUploading(false);
-                  }}
-                />
-                {resumeUploading
-                  ? <><Spinner size={20} /><span style={{ color: muted, fontSize: 13 }}>Parsing with AI…</span></>
-                  : <><span style={{ fontSize: 24 }}>📎</span><span style={{ color: muted, fontSize: 13 }}>{resumeFile || "Click to upload PDF resume"}</span></>
-                }
-              </label>
-            </div>
-
             <div style={{ ...card, maxWidth: 600 }}>
               {[
                 { key: "name", label: "Full Name" },

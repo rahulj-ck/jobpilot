@@ -58,6 +58,7 @@ export default async function handler(req, res) {
 
   // 3. Parse resume with Claude (send as base64 PDF)
   let parsed = null;
+  let parseError = null;
   try {
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
         "anthropic-beta": "pdfs-2024-09-25",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1000,
         messages: [{
           role: "user",
@@ -99,10 +100,18 @@ export default async function handler(req, res) {
     });
 
     const claudeData = await claudeRes.json();
+    console.log("Claude response:", JSON.stringify(claudeData).slice(0, 500));
+    
+    if (claudeData.error) {
+      parseError = claudeData.error.message;
+      throw new Error(claudeData.error.message);
+    }
+    
     const raw = claudeData.content?.[0]?.text || "";
     const clean = raw.replace(/```json|```/g, "").trim();
     parsed = JSON.parse(clean);
   } catch (e) {
+    parseError = e.message;
     console.error("Claude parse error:", e);
   }
 
@@ -130,5 +139,5 @@ export default async function handler(req, res) {
     }
   }
 
-  res.status(200).json({ parsed, resumeUrl });
+  res.status(200).json({ parsed, resumeUrl, parseError });
 }
