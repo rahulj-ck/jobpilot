@@ -84,14 +84,39 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: `Extract the following from this resume and return ONLY a JSON object (no markdown, no explanation):
+              text: `Extract ALL of the following from this resume and return ONLY a valid JSON object (no markdown, no explanation):
 {
   "name": "full name",
+  "email": "email address if present",
+  "phone": "phone number if present",
+  "linkedin": "linkedin url if present",
   "title": "current or most recent job title",
-  "skills": "comma-separated list of technical skills",
-  "experience": "X years (estimate based on work history)",
-  "location": "city, state or Remote if not specified",
-  "bio": "2-sentence professional summary"
+  "skills": "comma-separated list of all technical and soft skills",
+  "experience": "X years (estimate total years of work experience)",
+  "location": "city, country",
+  "bio": "3-sentence professional summary based on their background",
+  "school": "most recent university or college name",
+  "degree": "full degree name e.g. Bachelor of Engineering in Computer Science",
+  "discipline": "field of study e.g. Computer Science",
+  "work_history": [
+    {
+      "company": "company name",
+      "title": "job title",
+      "start": "month year",
+      "end": "month year or Present",
+      "description": "2-sentence summary of role and impact"
+    }
+  ],
+  "education_history": [
+    {
+      "school": "school name",
+      "degree": "degree name",
+      "field": "field of study",
+      "start": "year",
+      "end": "year or Present"
+    }
+  ],
+  "certifications": ["cert1", "cert2"]
 }`,
             },
           ],
@@ -128,7 +153,21 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           user_id: userId,
-          ...parsed,
+          name: parsed.name,
+          email: parsed.email,
+          phone: parsed.phone,
+          linkedin: parsed.linkedin,
+          title: parsed.title,
+          skills: parsed.skills,
+          experience: parsed.experience,
+          location: parsed.location,
+          bio: parsed.bio,
+          school: parsed.school,
+          degree: parsed.degree,
+          discipline: parsed.discipline,
+          work_history: parsed.work_history ? JSON.stringify(parsed.work_history) : null,
+          education_history: parsed.education_history ? JSON.stringify(parsed.education_history) : null,
+          certifications: parsed.certifications ? parsed.certifications.join(", ") : null,
           resume_url: resumeUrl,
           resume_filename: fileName || "resume.pdf",
           updated_at: new Date().toISOString(),
@@ -139,5 +178,10 @@ export default async function handler(req, res) {
     }
   }
 
-  res.status(200).json({ parsed, resumeUrl, parseError });
+  res.status(200).json({ 
+    parsed, 
+    resumeUrl, 
+    parseError,
+    resumeUploaded: !!resumeUrl,
+  });
 }

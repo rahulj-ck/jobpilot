@@ -33,7 +33,7 @@ export default function Login() {
         const data = await signUp(email, password);
         if (data.access_token) {
           saveSession(data);
-          router.replace("/");
+          router.replace("/onboarding");  // go to onboarding after signup
         } else {
           setSuccess("Check your email to confirm your account, then log in.");
         }
