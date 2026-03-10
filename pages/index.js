@@ -89,6 +89,7 @@ export default function Home() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [scoringIds, setScoringIds] = useState(new Set());
   const [filterScore, setFilterScore] = useState(0);
+  const [filterType, setFilterType] = useState("");
   const [toast, setToast] = useState(null);
   const [sourceCounts, setSourceCounts] = useState({});
   const [session, setSession] = useState(null);
@@ -268,7 +269,9 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
   };
 
   const appliedJobs = jobs.filter(j => statuses[j.id] === "applied");
-  const sortedJobs = [...jobs].filter(j => (scores[j.id] || 0) >= filterScore || scoringIds.has(j.id))
+  const sortedJobs = [...jobs]
+    .filter(j => (scores[j.id] || 0) >= filterScore || scoringIds.has(j.id))
+    .filter(j => !filterType || (j.type || "Full-time") === filterType)
     .sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
   const avgScore = jobs.length && Object.keys(scores).length
     ? Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length)
@@ -401,12 +404,20 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                 {searchLoading ? "Searching…" : "🔍 Search"}
               </button>
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center" }}>
-              <span style={{ color: muted, fontSize: 12 }}>Min score:</span>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: muted, fontSize: 12 }}>Score:</span>
               {[0, 60, 70, 80, 90].map(s => (
                 <button key={s} onClick={() => setFilterScore(s)}
                   style={{ ...btn("ghost"), background: filterScore === s ? accent : "#ffffff08", color: filterScore === s ? "#fff" : muted, padding: "4px 12px", fontSize: 12 }}>
                   {s === 0 ? "All" : `${s}+`}
+                </button>
+              ))}
+              <span style={{ color: border, margin: "0 4px" }}>|</span>
+              <span style={{ color: muted, fontSize: 12 }}>Type:</span>
+              {["", "Full-time", "Part-time", "Internship", "Contract"].map(t => (
+                <button key={t} onClick={() => setFilterType(t)}
+                  style={{ ...btn("ghost"), background: filterType === t ? accent : "#ffffff08", color: filterType === t ? "#fff" : muted, padding: "4px 12px", fontSize: 12 }}>
+                  {t === "" ? "All" : t}
                 </button>
               ))}
               <span style={{ marginLeft: "auto", color: muted, fontSize: 12 }}>{sortedJobs.length} jobs</span>
@@ -798,7 +809,18 @@ function JobCard({ job, score, scoring, status, active, onCover, onResume, onApp
           </div>
           {job.description && (
             <div style={{ color: "#8888a0", fontSize: 12, lineHeight: 1.6, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {job.description?.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/&#\d+;/g, " ").replace(/\s+/g, " ").trim()}
+              {(() => {
+                const raw = job.description || "";
+                // Strip HTML tags, leftover tag names, and HTML entities
+                return raw
+                  .replace(/<[^>]*>/g, " ")
+                  .replace(/\b(div|span|p|strong|em|ul|li|ol|br|h[1-6]|section|article)(\s+[^\s<>]*)?\b/gi, " ")
+                  .replace(/class=\S*/g, "")
+                  .replace(/&[a-z]+;/gi, " ")
+                  .replace(/&#\d+;/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim();
+              })()}
             </div>
           )}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
