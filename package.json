@@ -5,13 +5,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "apply": "node scripts/apply.js",
+    "apply:dry": "node scripts/apply.js --dry-run --visible",
+    "apply:visible": "node scripts/apply.js --visible"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.0",
     "next": "14.2.3",
-    "pdf-parse": "^2.4.5",
     "react": "^18",
     "react-dom": "^18"
+  },
+  "devDependencies": {
+    "playwright": "^1.44.0",
+    "dotenv": "^16.4.5"
   }
 }
