@@ -609,8 +609,11 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                       if (data.parsed) {
                         setProfile(p => ({ ...p, ...data.parsed, resume_url: data.resumeUrl, resume_filename: file.name }));
                         showToast("✓ Resume parsed! Profile auto-filled.");
+                      } else if (data.resumeUploaded) {
+                        setProfile(p => ({ ...p, resume_url: data.resumeUrl, resume_filename: file.name }));
+                        showToast("✓ Resume uploaded! Please fill in your profile details manually.");
                       } else {
-                        showToast("Parse failed: " + (data.parseError || "unknown error"), "error");
+                        showToast("Upload failed: " + (data.parseError || "unknown error"), "error");
                       }
                     } catch (err) {
                       showToast("Upload failed: " + err.message, "error");
@@ -786,7 +789,7 @@ function JobCard({ job, score, scoring, status, active, onCover, onResume, onApp
           </div>
           {job.description && (
             <div style={{ color: "#8888a0", fontSize: 12, lineHeight: 1.6, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {job.description?.replace(/<[^>]*>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, """).replace(/&#[0-9]+;/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim()}
+              {job.description?.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/&#\d+;/g, " ").replace(/\s+/g, " ").trim()}
             </div>
           )}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
