@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { getValidSession, clearSession, signOut } from "../lib/auth";
+import { saveProfile } from "../lib/supabase";
 
 const initialProfile = {
   name: "Rahul",
@@ -657,6 +658,21 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
                 ))}
               </div>
 
+              {/* Education Fields */}
+              <div style={{ borderTop: `1px solid ${border}`, paddingTop: 24, marginBottom: 24 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>🎓 Education</div>
+                <div style={{ fontSize: 12, color: muted, marginBottom: 20 }}>Used to fill education fields on job applications</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  {[["school", "School / University"], ["degree", "Degree (e.g. Bachelor of Engineering)"], ["discipline", "Field of Study"]].map(([key, label]) => (
+                    <div key={key}>
+                      <label style={{ display: "block", fontSize: 12, color: muted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</label>
+                      <input value={profile[key] || ""} onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))}
+                        style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 14px", color: text, fontFamily: "inherit", fontSize: 13, outline: "none" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Auto-Apply Fields */}
               <div style={{ borderTop: `1px solid ${border}`, paddingTop: 24, marginBottom: 24 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚡ Auto-Apply Settings</div>
@@ -712,43 +728,34 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
 
               <button style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 14 }}
                 onClick={async () => {
-                  // Save to Supabase user_profiles
                   try {
-                    await fetch(
-                      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/user_profiles`,
-                      {
-                        method: "POST",
-                        headers: {
-                          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-                          Authorization: `Bearer ${session?.access_token}`,
-                          "Content-Type": "application/json",
-                          "Prefer": "resolution=merge-duplicates",
-                        },
-                        body: JSON.stringify({
-                          user_id: session?.user?.id,
-                          name: profile.name,
-                          title: profile.title,
-                          skills: profile.skills,
-                          experience: profile.experience,
-                          location: profile.location,
-                          bio: profile.bio,
-                          email: profile.email,
-                          phone: profile.phone,
-                          linkedin: profile.linkedin,
-                          work_auth: profile.workAuth,
-                          need_sponsorship: profile.needSponsorship,
-                          salary_min: profile.salaryMin,
-                          salary_max: profile.salaryMax,
-                          updated_at: new Date().toISOString(),
-                        }),
-                      }
-                    );
-                    showToast("Profile saved! Re-scoring jobs…");
+                    const s = await getValidSession();
+                    await saveProfile(s?.user?.id, {
+                      name: profile.name,
+                      title: profile.title,
+                      skills: profile.skills,
+                      experience: profile.experience,
+                      location: profile.location,
+                      bio: profile.bio,
+                      email: profile.email,
+                      phone: profile.phone,
+                      linkedin: profile.linkedin,
+                      school: profile.school,
+                      degree: profile.degree,
+                      discipline: profile.discipline,
+                      work_auth: profile.workAuth,
+                      need_sponsorship: profile.needSponsorship,
+                      salary_min: parseInt(profile.salaryMin) || null,
+                      salary_max: parseInt(profile.salaryMax) || null,
+                      resume_url: profile.resume_url,
+                      resume_filename: profile.resume_filename,
+                    }, s?.access_token);
+                    showToast("✓ Profile saved!");
+                    setView("jobs");
+                    handleSearch();
                   } catch (e) {
                     showToast("Save failed: " + e.message, "error");
                   }
-                  setView("jobs");
-                  handleSearch();
                 }}>
                 Save & Re-Score Jobs
               </button>
@@ -779,7 +786,7 @@ function JobCard({ job, score, scoring, status, active, onCover, onResume, onApp
           </div>
           {job.description && (
             <div style={{ color: "#8888a0", fontSize: 12, lineHeight: 1.6, marginBottom: 10, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {job.description?.replace(/<[^>]*>/g, "").replace(/&[a-z]+;/gi, " ").trim()}
+              {job.description?.replace(/<[^>]*>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, """).replace(/&#[0-9]+;/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim()}
             </div>
           )}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
