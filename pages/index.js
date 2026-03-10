@@ -202,6 +202,7 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
             "Prefer": "return=minimal",
           },
           body: JSON.stringify({
+            user_id: session?.user?.id,
             job_id: job.id,
             job_title: job.title,
             company: job.company,
