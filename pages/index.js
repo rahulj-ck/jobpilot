@@ -710,7 +710,45 @@ Job: ${job.title} at ${job.company}, tags: ${job.tags.join(", ")}`;
               </div>
 
               <button style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 14 }}
-                onClick={() => { showToast("Profile saved! Re-scoring jobs…"); setView("jobs"); handleSearch(); }}>
+                onClick={async () => {
+                  // Save to Supabase user_profiles
+                  try {
+                    await fetch(
+                      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/user_profiles`,
+                      {
+                        method: "POST",
+                        headers: {
+                          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                          Authorization: `Bearer ${session?.access_token}`,
+                          "Content-Type": "application/json",
+                          "Prefer": "resolution=merge-duplicates",
+                        },
+                        body: JSON.stringify({
+                          user_id: session?.user?.id,
+                          name: profile.name,
+                          title: profile.title,
+                          skills: profile.skills,
+                          experience: profile.experience,
+                          location: profile.location,
+                          bio: profile.bio,
+                          email: profile.email,
+                          phone: profile.phone,
+                          linkedin: profile.linkedin,
+                          work_auth: profile.workAuth,
+                          need_sponsorship: profile.needSponsorship,
+                          salary_min: profile.salaryMin,
+                          salary_max: profile.salaryMax,
+                          updated_at: new Date().toISOString(),
+                        }),
+                      }
+                    );
+                    showToast("Profile saved! Re-scoring jobs…");
+                  } catch (e) {
+                    showToast("Save failed: " + e.message, "error");
+                  }
+                  setView("jobs");
+                  handleSearch();
+                }}>
                 Save & Re-Score Jobs
               </button>
             </div>

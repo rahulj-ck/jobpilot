@@ -108,6 +108,13 @@ async function main() {
     };
 
     const result = await applyToJob(page, jobData, config.profile, config.dryRun);
+
+    if (config.dryRun) {
+      console.log("  ⏸  DRY RUN — browser staying open for 30s so you can inspect the form...");
+      console.log("  Press Ctrl+C to exit early.");
+      await sleep(30000);
+    }
+
     await page.close();
 
     if (result.success) {

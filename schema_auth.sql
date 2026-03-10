@@ -49,3 +49,15 @@ create policy "Anyone can read resumes"
 create policy "Users can update own resume"
   on storage.objects for update
   using (bucket_id = 'resumes' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Add missing fields to user_profiles for auto-apply
+alter table user_profiles add column if not exists email text;
+alter table user_profiles add column if not exists phone text;
+alter table user_profiles add column if not exists linkedin text;
+alter table user_profiles add column if not exists school text;
+alter table user_profiles add column if not exists degree text;
+alter table user_profiles add column if not exists discipline text;
+alter table user_profiles add column if not exists work_auth text default 'yes';
+alter table user_profiles add column if not exists need_sponsorship text default 'no';
+alter table user_profiles add column if not exists salary_min integer;
+alter table user_profiles add column if not exists salary_max integer;

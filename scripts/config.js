@@ -28,6 +28,9 @@ module.exports = {
     needSponsorship: process.env.APPLY_SPONSORSHIP  || "no",    // yes | no
     salaryMin:       process.env.APPLY_SALARY_MIN   || "140000",
     salaryMax:       process.env.APPLY_SALARY_MAX   || "200000",
+    school:          process.env.APPLY_SCHOOL         || "University of Delhi",
+    degree:          process.env.APPLY_DEGREE         || "Bachelor's in Computer Science",
+    discipline:      process.env.APPLY_DISCIPLINE     || "Computer Science",
   },
 
   // Apply run settings
